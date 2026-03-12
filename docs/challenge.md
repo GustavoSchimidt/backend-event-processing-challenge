@@ -1,75 +1,75 @@
-# Backend Event Processor — Technical Challenge
+# Processador de Eventos Backend — Desafio Técnico
 
-## Overview
+## Visão Geral
 
-You have been given a skeleton project with a Fastify API, a PostgreSQL database, and a mock external services layer.
+Você recebeu um projeto base com uma API Fastify, banco PostgreSQL e uma camada mock de serviços externos.
 
-Your mission is to implement a resilient, production-grade event processing system on top of this infrastructure.
+Sua missão é implementar um sistema de processamento de eventos resiliente e com padrão de produção sobre essa infraestrutura.
 
 ---
 
-## What You Must Build
+## O que você deve construir
 
-### 1. Event Ingestion Endpoint
+### 1. Endpoint de ingestão de eventos
 
-Implement `POST /events` on the API.
+Implemente `POST /events` na API.
 
-The endpoint must:
+O endpoint deve:
 
-- Accept the event payload described below
-- Validate the payload
-- Persist the received event to PostgreSQL
-- Enqueue it for asynchronous processing
-- Return `202 Accepted` immediately — do not wait for processing
+- Aceitar o payload de evento descrito abaixo
+- Validar o payload
+- Persistir o evento recebido no PostgreSQL
+- Enfileirar o evento para processamento assíncrono
+- Retornar `202 Accepted` imediatamente, sem aguardar o processamento
 
-### 2. Asynchronous Event Processor
+### 2. Processador assíncrono de eventos
 
-Implement a worker that:
+Implemente um worker que:
 
-- Picks up pending events from the queue
-- Routes each event to the correct mock integration based on its type:
+- Consuma eventos pendentes da fila
+- Encaminhe cada evento para a integração correta com base no tipo:
 
-| Event type          | Integration     |
-|---------------------|-----------------|
-| `order.*`           | `POST /billing` + `POST /crm` |
-| `payment.*`         | `POST /billing` |
-| `customer.*`        | `POST /crm` + `POST /notifications` |
+| Tipo de evento       | Integração              |
+|----------------------|-------------------------|
+| `order.*`            | `POST /billing` + `POST /crm` |
+| `payment.*`          | `POST /billing`         |
+| `customer.*`         | `POST /crm` + `POST /notifications` |
 
-- Marks events as `processed` on success
-- Handles failures gracefully (see Retry Logic below)
+- Marque eventos como `processed` em caso de sucesso
+- Trate falhas de forma resiliente (ver seção Retry)
 
-### 3. Retry Logic
+### 3. Lógica de retry
 
-The mock integrations are intentionally unstable (latency, 500s, 429s).
+As integrações mock são intencionalmente instáveis (latência, 500, 429).
 
-Your processor must:
+Seu processador deve:
 
-- Retry failed requests with **exponential backoff**
-- Respect the `Retry-After` header on HTTP 429
-- Define a maximum number of retry attempts (your choice — justify it)
-- Move events to a **Dead Letter Queue (DLQ)** after exhausting retries
+- Repetir chamadas com **backoff exponencial**
+- Respeitar o header `Retry-After` em respostas `429`
+- Definir número máximo de tentativas (escolha sua e justifique)
+- Encaminhar para **Dead Letter Queue (DLQ)** após esgotar tentativas
 
 ### 4. Dead Letter Queue (DLQ)
 
-Implement a DLQ mechanism for unprocessable events.
+Implemente mecanismo de DLQ para eventos não processáveis.
 
-Requirements:
+Requisitos:
 
-- Persist DLQ events separately (table, file, or in-memory — document your choice)
-- Include the failure reason and retry count
-- Expose `GET /dlq` to list DLQ events
+- Persistir eventos de DLQ separadamente (tabela, arquivo ou memória — documente sua escolha)
+- Incluir motivo da falha e número de tentativas
+- Expor `GET /dlq` para listar eventos em DLQ
 
-### 5. Observability
+### 5. Observabilidade
 
-Instrument your implementation:
+Instrumente sua implementação:
 
-- Structured JSON logs (use the existing Fastify logger)
-- At minimum, log: event received, processing started, retry attempt, DLQ routing, success
-- A `GET /metrics` endpoint returning basic counters: `processed`, `failed`, `dlq`, `pending`
+- Logs JSON estruturados (use o logger existente do Fastify)
+- No mínimo, registrar: evento recebido, início de processamento, tentativa de retry, envio para DLQ e sucesso
+- Endpoint `GET /metrics` com contadores básicos: `processed`, `failed`, `dlq`, `pending`
 
 ---
 
-## Event Payload
+## Payload do evento
 
 ```json
 {
@@ -80,16 +80,16 @@ Instrument your implementation:
 }
 ```
 
-### Validation rules
+### Regras de validação
 
-| Field       | Required | Type   | Constraints              |
-|-------------|----------|--------|--------------------------|
-| `event_id`  | yes      | string | valid UUID v4            |
-| `tenant_id` | yes      | string | non-empty string         |
-| `type`      | yes      | string | must be a known type     |
-| `payload`   | yes      | object | can be empty `{}`        |
+| Campo       | Obrigatório | Tipo   | Restrições               |
+|-------------|-------------|--------|--------------------------|
+| `event_id`  | sim         | string | UUID v4 válido           |
+| `tenant_id` | sim         | string | string não vazia         |
+| `type`      | sim         | string | deve ser tipo conhecido  |
+| `payload`   | sim         | object | pode ser `{}` vazio      |
 
-### Accepted event types
+### Tipos de evento aceitos
 
 - `order.created`
 - `order.updated`
@@ -101,19 +101,19 @@ Instrument your implementation:
 
 ---
 
-## Testing Your Implementation
+## Como testar sua implementação
 
-### Start the environment
+### Subir ambiente
 
 ```bash
 cp .env.example .env
 docker compose up
 ```
 
-### Send test events
+### Enviar eventos de teste
 
 ```bash
-# Single event
+# Evento único
 curl -X POST http://localhost:3000/events \
   -H "Content-Type: application/json" \
   -d '{
@@ -123,53 +123,53 @@ curl -X POST http://localhost:3000/events \
     "payload": { "orderId": "ORD-001", "value": 199.90 }
   }'
 
-# Load test (10k events, 50 concurrent)
+# Teste de carga (10k eventos, 50 concorrentes)
 cd scripts && npm install && npx tsx generate-events.ts
 ```
 
 ---
 
-## Deliverables
+## Entregáveis
 
-1. Fork this repository and implement the challenge
-2. Submit a pull request or share your fork URL
-3. Include a `SOLUTION.md` at the root with:
-   - Architecture decisions and trade-offs
-   - Technology choices (queue mechanism, retry strategy, etc.)
-   - How to run your solution
-   - What you would improve given more time
-
----
-
-## Evaluation Criteria
-
-| Criteria              | Weight |
-|-----------------------|--------|
-| Correctness           | High   |
-| Resilience & retries  | High   |
-| Code quality          | High   |
-| Observability         | Medium |
-| Documentation         | Medium |
-| Performance           | Medium |
-| Test coverage         | Bonus  |
+1. Faça fork deste repositório e implemente o desafio
+2. Envie um pull request ou compartilhe a URL do seu fork
+3. Inclua um `SOLUTION.md` na raiz com:
+   - Decisões de arquitetura e trade-offs
+   - Escolhas tecnológicas (mecanismo de fila, estratégia de retry etc.)
+   - Como executar sua solução
+   - O que melhoraria com mais tempo
 
 ---
 
-## Constraints
+## Critérios de avaliação
 
-- Do not change the mock integrations behavior
-- Do not change the database init schema (you may add tables and columns)
-- You may add any npm packages you need
-- You may use any queue mechanism (in-process, Redis, PostgreSQL SKIP LOCKED, etc.)
-- TypeScript strict mode must remain enabled
+| Critério               | Peso   |
+|------------------------|--------|
+| Corretude              | Alto   |
+| Resiliência e retries  | Alto   |
+| Qualidade de código    | Alto   |
+| Observabilidade        | Médio  |
+| Documentação           | Médio  |
+| Performance            | Médio  |
+| Cobertura de testes    | Bônus  |
 
 ---
 
-## Time Expectation
+## Restrições
 
-This challenge is designed to be completed in **4–6 hours**.
+- Não altere o comportamento das integrações mock
+- Não altere o schema inicial do banco (você pode adicionar tabelas e colunas)
+- Você pode adicionar quaisquer pacotes npm necessários
+- Você pode usar qualquer mecanismo de fila (in-process, Redis, PostgreSQL SKIP LOCKED etc.)
+- O modo strict do TypeScript deve permanecer habilitado
 
-We value clean, well-reasoned code over completeness. If you run out of time, document what you would have done next.
+---
+
+## Expectativa de tempo
+
+Este desafio foi desenhado para ser concluído em **4–6 horas**.
+
+Valorizamos código limpo e decisões bem justificadas mais do que completude. Se faltar tempo, documente o que faria na sequência.
 
 ---
 

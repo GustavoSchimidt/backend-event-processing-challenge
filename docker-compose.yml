@@ -29,6 +29,13 @@ services:
       API_PORT: 3000
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/events_db
       MOCK_INTEGRATIONS_URL: http://mock-integrations:4000
+      WORKER_ENABLED: "true"
+      WORKER_POLL_MS: 500
+      WORKER_BATCH_SIZE: 50
+      WORKER_CONCURRENCY: 10
+      WORKER_LEASE_MS: 30000
+      MAX_RETRIES: 6
+      HTTP_TIMEOUT_MS: 5000
     depends_on:
       postgres:
         condition: service_healthy
